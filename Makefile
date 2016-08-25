@@ -1,9 +1,12 @@
 CC = gcc
 
-all: astyle clean ulog
+all: astyle clean ulog ulogread
 	
+ulogread:
+	ln -sf ulog ulogread
+
 clean:
-	rm -rf ulog
+	rm -rf ulog ulogread
 	rm -rf *.o *.orig
 
 astyle:
