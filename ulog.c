@@ -14,21 +14,21 @@
 int debug = 0;
 
 
-void mlogd_usage(char *prog_name)
+void ulog_usage(char *prog_name)
 {
-
-#define USAGE_CONTENT \
-	"Usage: %s [OPTIONS]\n" \
-	"OPTIONS:\n" \
-	"	-o <file>        # log filename\n" \
-	"	-r <num>         # N-rotate log files to keep (default: %d)\n" \
-	"	-s <size>        # max size of a log file in KB (default: %d)\n" \
-	"	-t               # with timestamp\n" \
-	"	-z <compressor>  # compress rotated file\n" \
-	"	-d               # debug verbose\n" \
-	""
-
-	printf(USAGE_CONTENT, prog_name, DEFAULT_ROTATE, DEFAULT_LOGSIZE_KB);
+	fprintf(stdout,
+	        "Usage: %s [OPTIONS]\n"
+	        "\n"
+	        "Log standard input to FILE with rotate , and also to standard output\n"
+	        "\n"
+	        "	-a, --append     # append to the given log, do not overwrite\n"
+	        "	-o FILE          # log filename\n"
+	        "	-b N             # N rotated logs to keep (default:%d, max=99, 0=purge)\n"
+	        "	-s SIZE          # Max size (KB) before rotation (default:%d, 0=off)\n"
+	        "	-t               # log message with timestamp\n"
+	        "	-c COMPRESSOR    # compressors for rotated log: \"none\", \"lzo\", \"gzip\"\n"
+	        "	-v               # debug verbose\n"
+	        "", prog_name, DEFAULT_ROTATE, DEFAULT_LOGSIZE_KB);
 }
 
 
@@ -196,7 +196,7 @@ const char *get_uptime()
 }
 
 
-int mlogd_READ_MODE_LINE(struct config *conf)
+int ulog_READ_MODE_LINE(struct config *conf)
 {
 	char *line = NULL;
 	size_t line_size = 0;
@@ -231,7 +231,7 @@ int mlogd_READ_MODE_LINE(struct config *conf)
 	return 0;
 }
 
-int mlogd_READ_MODE_BINARY(struct config *conf)
+int ulog_READ_MODE_BINARY(struct config *conf)
 {
 	char buff[MAX_LINE_SIZE];
 	size_t buff_size = MAX_LINE_SIZE;
@@ -263,7 +263,7 @@ int mlogd_READ_MODE_BINARY(struct config *conf)
 	return 0;
 }
 
-int mlogd(int argc, char *argv[])
+int ulog(int argc, char *argv[])
 {
 	struct config default_config = {
 		.read_mode = READ_MODE_LINE,
@@ -273,6 +273,13 @@ int mlogd(int argc, char *argv[])
 		.timestamp = TIMESTAMP_NONE,
 		.compress = COMPRESS_NONE,
 	};
+
+	if(argc <= 1) {
+		ulog_usage(argv[0]);
+		exit(1);
+	}
+
+
 
 	int opt;
 	while((opt = getopt(argc, argv, "do:r:s:tz:")) != -1) {
@@ -302,7 +309,7 @@ int mlogd(int argc, char *argv[])
 			}
 			break;
 		default:
-			mlogd_usage(argv[0]);
+			ulog_usage(argv[0]);
 			exit(1);
 		}
 	}
@@ -313,9 +320,9 @@ int mlogd(int argc, char *argv[])
 	}
 
 	if(default_config.read_mode == READ_MODE_LINE) {
-		return mlogd_READ_MODE_LINE(&default_config);
+		return ulog_READ_MODE_LINE(&default_config);
 	} else if(default_config.read_mode == READ_MODE_BINARY) {
-		return mlogd_READ_MODE_BINARY(&default_config);
+		return ulog_READ_MODE_BINARY(&default_config);
 	} else {
 		fprintf(stderr, "Error: not suppport mode: %d", default_config.read_mode);
 		return -1;
@@ -325,7 +332,7 @@ int mlogd(int argc, char *argv[])
 }
 
 
-int mlogread(int argc, char *argv[])
+int ulogread(int argc, char *argv[])
 {
 	struct config default_config = {
 		.read_mode = READ_MODE_LINE,
@@ -364,7 +371,7 @@ int mlogread(int argc, char *argv[])
 			}
 			break;
 		default:
-			mlogd_usage(argv[0]);
+			ulog_usage(argv[0]);
 			exit(1);
 		}
 	}
@@ -389,9 +396,9 @@ int mlogread(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	if(strcmp(basename(argv[0]), "ulog") == 0) {
-		return mlogd(argc, argv);
+		return ulog(argc, argv);
 	} else if(strcmp(basename(argv[0]), "ulogread") == 0) {
-		return mlogread(argc, argv);
+		return ulogread(argc, argv);
 	}
 
 	return -1;
