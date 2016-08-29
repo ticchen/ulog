@@ -1,5 +1,3 @@
-CC = gcc
-
 all: astyle clean ulog ulogread
 	
 ulogread:
