@@ -3,17 +3,6 @@
 
 #include <stdlib.h>
 
-#define ddd() do \
-{ \
-	fprintf(stderr, "%s():%d\n", __FUNCTION__, __LINE__); \
-} while(0)
-
-#define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
-#define array_for_each_entry_size(entry, array, array_size) \
-	for (entry = array;entry<array+array_size;entry++)
-#define array_for_each_entry(entry, array) array_for_each_entry_size(entry, array, ARRAY_SIZE(array))
-
-
 //default parameter
 #define DEFAULT_ROTATE		5
 #define DEFAULT_LOG_SIZE	64*1024

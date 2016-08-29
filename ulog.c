@@ -9,6 +9,7 @@
 #include <getopt.h>
 
 #include "ulog.h"
+#include "common.h"
 
 
 //global variable
@@ -71,72 +72,37 @@ int file_exist(char *filename)
 
 int shell_move(const char *src_file, const char *dst_file)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "mv -f -v %s %s >/dev/null 2>&1", src_file, dst_file);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("mv -f -v %s %s >/dev/null 2>&1", src_file, dst_file);
 }
 
 int shell_mkdir(char *path)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "mkdir -p %s", path);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("mkdir -p %s", path);
 }
 
 int shell_gzip(char *filename, char *suffix)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "gzip -f %s", filename);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("gzip -f %s", filename);
 }
 
 int shell_lzo(char *filename, char *suffix)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "lzop %s", filename);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("lzop %s", filename);
 }
 
 int shell_cat(char *filename)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "cat %s", filename);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("cat %s", filename);
 }
 
 int shell_zcat(char *filename)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "zcat %s", filename);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("zcat %s", filename);
 }
 
 int shell_lzocat(char *filename)
 {
-	char command[_POSIX_ARG_MAX] = {0};
-	snprintf(command, sizeof(command), "lzop -d < %s", filename);
-	if(global_debug) {
-		fprintf(stderr, "%s\n", command);
-	}
-	return system(command);
+	return do_system("lzop -d < %s", filename);
 }
 
 const char *format_string(const char *str, size_t str_size, const char *format, ...)
@@ -445,10 +411,12 @@ int config_save_config_file(struct config *conf)
 		fprintf(fp, "--banner\n");
 	}
 
+	/* config file should not contain another config file info
 	if(strlen(conf->config_file)) {
 		fprintf(fp, "--config\n");
 		fprintf(fp, "%s\n", conf->config_file);
 	}
+	*/
 
 	if(conf->debug_level) {
 		fprintf(fp, "--global_debug\n");
@@ -492,6 +460,11 @@ int main(int argc, char *argv[])
 		.timestamp_type = TIMESTAMP_NONE,
 		.compress_type = COMPRESS_NONE,
 	};
+
+	if(argc < 3) {
+		ulog_usage(argv[0]);
+		exit(1);
+	}
 
 	if(config_load_argument(&default_config, argc, argv) != 0) {
 		ulog_usage(argv[0]);
