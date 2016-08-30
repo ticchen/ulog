@@ -10,6 +10,8 @@
 
 #include "ulog.h"
 #include "common.h"
+#include "file.h"
+#include "time.h"
 
 
 //global variable
@@ -27,12 +29,14 @@ void ulog_usage(char *prog_name)
 	        "	-b, --banner                # when ulog start, log a banner message\n"
 	        "	-c CONFIG, --config=CONFIG  # read setting from config\n"
 	        "	-d, --debug                 # debug verbose\n"
-	        "	-o FILE, --file=FILE        # log filename\n"
-	        "	-r N                        # N rotated logs to keep (default:%d, max=99, 0=purge)\n"
-	        "	-s SIZE                     # Max size (KB) before rotation (default:%d, 0=off)\n"
-	        "	                            # support multiplicative  suffixes: KB=1000, K=1024, MB=1000*1000, M=1024*1024\n"
-	        "	-t, --timestamp_type        # log message with timestamp_type\n"
-	        "	-z COMPRESSOR               # compressors for rotated log: \"none\", \"gzip\". (default: none)\n"
+	        "	-l FILE, --logfile=FILE     # log filename\n"
+	        "   -m MODE, --mode=MODE        # work mode: \"log\":generate log, read:read log (default:log)\n"
+	        "	-r N, --rotate=N            # N rotated logs to keep (default:%d, max=99, 0=purge)\n"
+	        "	-s SIZE, --size=SIZE        # Max size (KB) before rotation (default:%d, 0=off)\n"
+	        "	                            # support multiplicative suffixes: KB=1000, K=1024, MB=1000*1000, M=1024*1024\n"
+	        "	-t, --timestamp             # log message with timestamp\n"
+	        "	-z COMPRESSOR, --compress=C # compressors for rotated log: \"none\", \"gzip\". (default: none)\n"
+
 	        "", prog_name, DEFAULT_ROTATE, DEFAULT_LOG_SIZE);
 	return;
 }
@@ -42,7 +46,8 @@ static struct option long_options[] = {
 	{"banner",		no_argument,		0,	'b'	},
 	{"config",		required_argument,	0,	'c'	},
 	{"debug",		no_argument,		0,	'd'	},
-	{"logfile",		required_argument,	0,	'o'	},
+	{"logfile",		required_argument,	0,	'l'	},
+	{"mode",		required_argument,	0,	'm'	},
 	{"rotate", 		required_argument,	0,	'r'	},
 	{"size",		required_argument,	0,	's'	},
 	{"timestamp",	no_argument,		0,	't' },
@@ -51,24 +56,6 @@ static struct option long_options[] = {
 };
 
 
-int file_size(char *filename)
-{
-	struct stat st;
-
-	if(stat(filename, &st) != 0) {
-		return -1; //invalid file
-	}
-	return st.st_size;
-}
-
-int file_exist(char *filename)
-{
-	if(file_size(filename) >= 0) {
-		return 1; //exist
-	}
-
-	return 0; //not exist
-}
 
 
 int shell_move(const char *src_file, const char *dst_file)
@@ -94,22 +81,6 @@ int shell_cat(char *filename)
 int shell_zcat(char *filename)
 {
 	return do_system("zcat %s", filename);
-}
-
-const char *format_string(const char *str, size_t str_size, const char *format, ...)
-{
-	if(str == NULL || str_size == 0 || format == NULL) {
-		return ""; //safe for stupid
-	}
-
-	va_list args;
-	va_start(args, format);
-	int len = vsnprintf((char *)str, str_size, format, args);
-	va_end(args);
-	if(len < 0 || str_size <= len) {
-		fprintf(stderr, "Error: str is truncated");
-	}
-	return str;
 }
 
 
@@ -145,25 +116,6 @@ int rotate_files(struct config *conf, int new_session)
 	return 0;
 }
 
-const char *get_uptime()
-{
-	static FILE *fp = NULL;
-	static char str_uptime[64] = {0};
-
-	if(fp == NULL) {
-		fp = fopen("/proc/uptime", "r");
-		setvbuf(fp, NULL, _IONBF, 0);
-		if(fp == NULL) {
-			return "invalid_uptime";
-		}
-	}
-
-	rewind(fp);
-	fgets(str_uptime, sizeof(str_uptime), fp);
-
-	char *next = NULL;
-	return strtok_r(str_uptime, " ", &next);
-}
 
 
 int ulog_READ_MODE_LINE(struct config *conf)
@@ -182,7 +134,7 @@ int ulog_READ_MODE_LINE(struct config *conf)
 
 	while((read = getline(&line, &line_size, stdin)) != -1) {
 		if(conf->timestamp_type == TIMESTAMP_UPTIME) {
-			log_size += fprintf(fp, "[%12s] ", get_uptime());
+			log_size += fprintf(fp, "[%12s] ", get_uptime_str());
 		}
 
 		fwrite(line, read, 1, fp);
@@ -233,11 +185,6 @@ int ulog_READ_MODE_BINARY(struct config *conf)
 	return 0;
 }
 
-int ulog(struct config *conf)
-{
-	return ulog_READ_MODE_LINE(conf);
-}
-
 
 int ulogread(struct config *conf)
 {
@@ -256,6 +203,23 @@ int ulogread(struct config *conf)
 	return 0;
 }
 
+int ulog(struct config *conf)
+{
+	//check requirement
+	if(strlen(conf->log_file) == 0) {
+		return -1;
+	}
+	if(conf->mode == MODE_LOG_LINE) {
+		return ulog_READ_MODE_LINE(conf);
+	} else if(conf->mode == MODE_LOG_BINARY) {
+		return ulog_READ_MODE_BINARY(conf);
+	} else if(conf->mode == MODE_READ_LOG) {
+		return ulogread(conf);
+	}
+	return -1;
+}
+
+
 int config_load_argument(struct config *conf, int argc, char *argv[])
 {
 	int val = 0;
@@ -263,7 +227,7 @@ int config_load_argument(struct config *conf, int argc, char *argv[])
 
 	optind = 0; //reset opt index
 	while(1) {
-		val = getopt_long(argc, argv, "abc:do:r:s:tz:", long_options, &option_index);
+		val = getopt_long(argc, argv, "abc:dl:m:r:s:tz:", long_options, &option_index);
 		if(val == -1) {
 			break;
 		}
@@ -281,15 +245,33 @@ int config_load_argument(struct config *conf, int argc, char *argv[])
 			conf->debug_level = 1;
 			global_debug = conf->debug_level;
 			break;
-		case 'o':
+		case 'l':
 			snprintf(conf->log_file, sizeof(conf->log_file), "%s", optarg);
+			break;
+		case 'm':
+			if(strcmp(optarg, "log") == 0) {
+				conf->mode = MODE_LOG_LINE;
+			} else if(strcmp(optarg, "read") == 0) {
+				conf->mode = MODE_READ_LOG;
+			}
 			break;
 		case 'r':
 			conf->rotate = strtoul(optarg, NULL, 10);
 			break;
-		case 's':
-			conf->log_size = strtoul(optarg, NULL, 10);
+		case 's': {
+			char *suffix = NULL;
+			conf->log_size = strtoul(optarg, &suffix, 10);
+			if(strcasecmp(suffix, "K") == 0 || strcasecmp(suffix, "KiB") == 0) {
+				conf->log_size *= 1024;
+			} else if(strcasecmp(suffix, "KB") == 0) {
+				conf->log_size *= 1000;
+			} else if(strcasecmp(suffix, "M") == 0 || strcasecmp(suffix, "MiB") == 0) {
+				conf->log_size *= 1024 * 1024;
+			} else if(strcasecmp(suffix, "MB") == 0) {
+				conf->log_size *= 1000 * 1000;
+			}
 			break;
+		}
 		case 't':
 			conf->timestamp_type = TIMESTAMP_UPTIME;
 			break;
@@ -301,12 +283,12 @@ int config_load_argument(struct config *conf, int argc, char *argv[])
 					break;
 				}
 			}
-			if(i == ARRAY_SIZE(compress_name)) {
+			if(i == ARRAY_SIZE(compress_name)) { //run out
 				fprintf(stderr, "Error: not support compressor: %s\n", optarg);
 				return -1;
 			}
+			break;
 		}
-		break;
 		default:
 			return -1;
 		}//end of switch
@@ -435,6 +417,8 @@ int config_save_config_file(struct config *conf)
 	return 0;
 }
 
+#include <sys/sysinfo.h>
+
 int main(int argc, char *argv[])
 {
 	struct config default_config = {
@@ -443,6 +427,7 @@ int main(int argc, char *argv[])
 		.config_file = {0},
 		.debug_level = 0,
 		.log_file = {0},
+		.mode = MODE_LOG_LINE,
 		.rotate = DEFAULT_ROTATE,
 		//.read_mode = READ_MODE_LINE,
 		.log_size = DEFAULT_LOG_SIZE,
@@ -465,10 +450,16 @@ int main(int argc, char *argv[])
 		config_save_config_file(&default_config);
 	}
 
+	if(strlen(default_config.log_file) == 0) {
+		fprintf(stderr, "Error: no log file\n");
+		exit(1);
+	}
+
 	if(strcmp(basename(argv[0]), "ulog") == 0) {
 		return ulog(&default_config);
 	} else if(strcmp(basename(argv[0]), "ulogread") == 0) {
-		return ulogread(&default_config);
+		default_config.mode = MODE_READ_LOG;
+		return ulog(&default_config);
 	}
 	return -1;
 }

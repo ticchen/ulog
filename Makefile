@@ -18,7 +18,7 @@ $(APP2):
 
 clean:
 	rm -rf $(APP) $(APP2)
-	rm -rf *.o *.orig *.d
+	rm -rf *.o *.orig *.d *.log *.gz *.conf
 
 astyle:
 	find ./ -type f -name '*.[ch]' | xargs -n 1 astyle --style=linux --indent=tab --pad-oper --unpad-paren --align-pointer=name --add-brackets

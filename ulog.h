@@ -1,5 +1,5 @@
-#ifndef _ULOG_H
-#define _ULOG_H
+#ifndef ULOG_H
+#define ULOG_H
 
 #include <stdlib.h>
 
@@ -14,8 +14,9 @@
 #define MAX_ARGV_SIZE		20
 
 enum {
-	READ_MODE_LINE,
-	READ_MODE_BINARY,
+	MODE_LOG_LINE,
+	MODE_LOG_BINARY,
+	MODE_READ_LOG,
 };
 
 enum {
@@ -59,7 +60,7 @@ struct config {
 	char			config_file[MAX_FILENAME_SIZE];
 	unsigned int	debug_level;
 	char			log_file[MAX_FILENAME_SIZE];
-	//int 			read_mode;
+	int 			mode;
 	int				rotate;
 	/* log size */
 	unsigned int	log_size;

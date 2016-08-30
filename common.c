@@ -7,28 +7,6 @@
 #include "common.h"
 
 /********************************
- * Global variable
- ********************************/
-static int _debug_level = 0;
-
-
-/********************************
- * wifi debug level function
- ********************************/
-void set_debug_level(int level)
-{
-	_debug_level = level;
-}
-
-
-int get_debug_level()
-{
-	return _debug_level;
-}
-
-
-
-/********************************
  * common helper function
  ********************************/
 int do_system(char *format, ...)
@@ -42,4 +20,21 @@ int do_system(char *format, ...)
 
 	int ret = system(command);
 	return ret;
+}
+
+
+const char *format_string(const char *str, size_t str_size, const char *format, ...)
+{
+	if(str == NULL || str_size == 0 || format == NULL) {
+		return ""; //safe for stupid
+	}
+
+	va_list args;
+	va_start(args, format);
+	int len = vsnprintf((char *)str, str_size, format, args);
+	va_end(args);
+	if(len < 0 || str_size <= len) {
+		fprintf(stderr, "Error: str is truncated");
+	}
+	return str;
 }

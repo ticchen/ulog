@@ -1,5 +1,5 @@
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef COMMON_H
+#define COMMON_H
 
 
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
@@ -13,4 +13,5 @@
 } while(0)
 
 int do_system(char *format, ...);
-#endif //_COMMON_H
+const char *format_string(const char *str, size_t str_size, const char *format, ...);
+#endif //COMMON_H
