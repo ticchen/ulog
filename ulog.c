@@ -23,15 +23,16 @@ void ulog_usage(char *prog_name)
 	        "\n"
 	        "Log standard input to rotate FILE\n"
 	        "\n"
-	        "	-a, --append                # append  message to the given log, do not rotate\n"
+	        "	-a, --append                # append message to the given log, do not rotate\n"
 	        "	-b, --banner                # when ulog start, log a banner message\n"
 	        "	-c CONFIG, --config=CONFIG  # read setting from config\n"
-	        "	-d, --global_debug                 # global_debug verbose\n"
+	        "	-d, --debug                 # debug verbose\n"
 	        "	-o FILE, --file=FILE        # log filename\n"
 	        "	-r N                        # N rotated logs to keep (default:%d, max=99, 0=purge)\n"
 	        "	-s SIZE                     # Max size (KB) before rotation (default:%d, 0=off)\n"
+	        "	                            # support multiplicative  suffixes: KB=1000, K=1024, MB=1000*1000, M=1024*1024\n"
 	        "	-t, --timestamp_type        # log message with timestamp_type\n"
-	        "	-z COMPRESSOR               # compressors for rotated log: \"none\", \"gzip\", \"lzo\". (default: none)\n"
+	        "	-z COMPRESSOR               # compressors for rotated log: \"none\", \"gzip\". (default: none)\n"
 	        "", prog_name, DEFAULT_ROTATE, DEFAULT_LOG_SIZE);
 	return;
 }
@@ -85,11 +86,6 @@ int shell_gzip(char *filename, char *suffix)
 	return do_system("gzip -f %s", filename);
 }
 
-int shell_lzo(char *filename, char *suffix)
-{
-	return do_system("lzop %s", filename);
-}
-
 int shell_cat(char *filename)
 {
 	return do_system("cat %s", filename);
@@ -98,11 +94,6 @@ int shell_cat(char *filename)
 int shell_zcat(char *filename)
 {
 	return do_system("zcat %s", filename);
-}
-
-int shell_lzocat(char *filename)
-{
-	return do_system("lzop -d < %s", filename);
 }
 
 const char *format_string(const char *str, size_t str_size, const char *format, ...)
@@ -139,9 +130,7 @@ int rotate_files(struct config *conf, int new_session)
 			}
 		}
 		//last one, do gzip compress and move
-		if(conf->compress_type == COMPRESS_LZO) {
-			shell_lzo(conf->log_file, compress_suffix[conf->compress_type]);
-		} else if(conf->compress_type == COMPRESS_GZIP) {
+		if(conf->compress_type == COMPRESS_GZIP) {
 			shell_gzip(conf->log_file, compress_suffix[conf->compress_type]);
 		}
 		format_string(src_filename, sizeof(src_filename), "%s%s", conf->log_file, compress_suffix[conf->compress_type]);

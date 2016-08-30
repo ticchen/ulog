@@ -27,7 +27,6 @@ enum {
 #define COMPRESS_TABLE 							\
 	X(COMPRESS_NONE,	"none", "",		shell_cat)		\
 	X(COMPRESS_GZIP,	"gzip",	".gz",	shell_zcat)		\
-	X(COMPRESS_LZO,		"lzo",	".lzo",	shell_lzocat)	\
 
 enum {
 #define X(type, name, suffix, cat)	type,
@@ -74,7 +73,6 @@ struct config {
 
 int shell_cat(char *filename);
 int shell_zcat(char *filename);
-int shell_lzocat(char *filename);
 
 static int (*compress_cat[])(char *) = {
 #define X(type, name, suffix, cat)	cat,
