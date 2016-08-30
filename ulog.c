@@ -56,31 +56,20 @@ static struct option long_options[] = {
 };
 
 
-
-
 int shell_move(const char *src_file, const char *dst_file)
 {
 	return do_system("mv -f -v %s %s >/dev/null 2>&1", src_file, dst_file);
 }
+
 
 int shell_mkdir(char *path)
 {
 	return do_system("mkdir -p %s", path);
 }
 
-int shell_gzip(char *filename, char *suffix)
-{
-	return do_system("gzip -f %s", filename);
-}
-
 int shell_cat(char *filename)
 {
 	return do_system("cat %s", filename);
-}
-
-int shell_zcat(char *filename)
-{
-	return do_system("zcat %s", filename);
 }
 
 
@@ -102,7 +91,8 @@ int rotate_files(struct config *conf, int new_session)
 		}
 		//last one, do gzip compress and move
 		if(conf->compress_type == COMPRESS_GZIP) {
-			shell_gzip(conf->log_file, compress_suffix[conf->compress_type]);
+			format_string(dst_filename, sizeof(dst_filename), "%s%s", conf->log_file, compress_suffix[conf->compress_type]);
+			compress_file_gzip(conf->log_file, dst_filename);
 		}
 		format_string(src_filename, sizeof(src_filename), "%s%s", conf->log_file, compress_suffix[conf->compress_type]);
 		format_string(dst_filename, sizeof(dst_filename), "%s.%d%s", conf->log_file, 0, compress_suffix[conf->compress_type]);
@@ -193,7 +183,12 @@ int ulogread(struct config *conf)
 	for(index = conf->rotate - 1; index >= 0; index--) {
 		format_string(filename, sizeof(filename), "%s.%d%s", conf->log_file, index, compress_suffix[conf->compress_type]);
 		if(file_exist(filename)) {
-			compress_cat[conf->compress_type](filename);
+			if(conf->compress_type == COMPRESS_GZIP) {
+				decompress_file_zcat(filename);
+			} else {
+				shell_cat(conf->log_file);
+			}
+			//compress_cat[conf->compress_type](filename);
 		}
 	}
 
