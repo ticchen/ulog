@@ -7,7 +7,7 @@ Log standard input to rotate FILE
 	-c CONFIG, --config=CONFIG  # read setting from config
 	-d, --debug                 # debug verbose
 	-l FILE, --logfile=FILE     # log filename
-   -m MODE, --mode=MODE        # work mode: "log":generate log, read:read log (default:log)
+	-m MODE, --mode=MODE        # work mode: "log":generate log, read:read log (default:log)
 	-r N, --rotate=N            # N rotated logs to keep (default:5, max=99, 0=purge)
 	-s SIZE, --size=SIZE        # Max size (KB) before rotation (default:65536, 0=off)
 	                            # support multiplicative suffixes: KB=1000, K=1024, MB=1000*1000, M=1024*1024
